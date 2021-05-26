@@ -1,0 +1,136 @@
+<?php
+
+
+class imageupload {
+
+
+  public $filename;
+  public $uploads_dir='/sistem/myimg/';	
+  public $filepath;	
+
+  public function __construct( $filename,$filepath ) {
+
+
+    try {
+
+       $this->filename = $filename;
+	   $this->filepath = $filepath;	
+
+     	
+		if (strlen($this->CodeToMessage($_FILES[$this->filename]['error']))>0 ) {
+			
+			echo $this->CodeToMessage($_FILES[$this->filename]['error']);
+		
+		}else if (strlen($this->PermissionExtensions($_FILES[$this->filename]['name']))>0) {
+		
+			echo $this->PermissionExtensions($_FILES[$this->filename]['name']);
+		
+		}else if (strlen($_FILES[$this->filename]['size']>1048576)) {
+		
+			echo 'Dosya boyutu çok büyük!';
+		
+		}else if (!preg_match("`^[-0-9A-Z_\.]+$`i",$_FILES[$this->filename]['name'])) {
+			
+			echo 'Dosya isminde özel karakterler kullanılamaz!!';
+			
+		} else {
+		
+			
+			 $tmp_name = $_FILES[$this->filename]["tmp_name"];
+			
+			 $name = basename(strtolower($_FILES[$this->filename]['name']));
+			
+			 $uploads_dir = $_SERVER['DOCUMENT_ROOT'].$this->uploads_dir.$this->filepath;
+			
+			 $file_exists = $uploads_dir.'/'.$_FILES[$this->filename]['name'];
+			
+			   if (!is_file( $uploads_dir )) {
+                 mkdir( $uploads_dir );
+                }		
+			
+			if (move_uploaded_file($tmp_name, "$uploads_dir/$name")) {
+				
+				echo "Dosyanız $this->filepath adlı klasöre başarı ile yüklendi";
+			}
+			
+			
+			
+		}
+		
+
+    } catch ( PDOException $e ) {
+
+      return [ 'status' => FALSE, 'error' => $e->getMessage() ]; 
+    }
+
+
+  }
+
+
+  private function PermissionExtensions( $permissionExtensions ) {
+
+
+    try {
+
+      $extensions = strtolower( pathinfo( basename( $permissionExtensions ), PATHINFO_EXTENSION ) );
+      $inArray = [ 'jpg', 'png', 'jpeg' ];
+
+      if ( in_array( $extensions, $inArray ) == FALSE ) {
+
+        throw new PDOException ('Geçersiz dosya uzantısı!');
+       
+      }
+
+     } catch ( PDOException $e ) {
+
+      return $e->getMessage();
+
+    }
+
+
+  }
+
+
+  private function CodeToMessage( $code ) {
+
+
+    try {
+
+      switch ( $code ) {
+        case UPLOAD_ERR_INI_SIZE:
+          throw new PDOException( "Yüklenen dosya php.ini içindeki upload_max_filesize yönergesindeki değeri aşmaktadır." );
+          break;
+        case UPLOAD_ERR_FORM_SIZE:
+          throw new PDOException( "Yüklenen dosya HTML form içinde belirtilen MAX_FILE_SIZE değerini aşmaktadır." );
+          break;
+        case UPLOAD_ERR_PARTIAL:
+          throw new PDOException( "Dosya kısmen yüklenmiştir." );
+          break;
+        case UPLOAD_ERR_NO_FILE:
+          throw new PDOException( "Lütfen bir dosya seçin." );
+          break;
+        case UPLOAD_ERR_NO_TMP_DIR:
+          throw new PDOException( "Geçici dizin yoktur." );
+          break;
+        case UPLOAD_ERR_CANT_WRITE:
+          throw new PDOException( "Dosya diske yazılamamıştır." );
+          break;
+        case UPLOAD_ERR_EXTENSION:
+          throw new PDOException( "Dosya yükleme bir PHP eklentisi nedeniyle durmuştur." );
+          break;
+      }
+
+    } catch ( PDOException $e ) {
+
+      return $e->getMessage();
+
+    }
+
+
+  }
+
+
+}
+
+
+?>
