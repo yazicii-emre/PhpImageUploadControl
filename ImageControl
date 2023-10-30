@@ -1,136 +1,86 @@
 <?php
 
+class FileUploader
+{
+    public $filename;
+    public $uploadsDir = '/system/myimg/';
+    public $filePath;
 
-class imageupload {
+    public function __construct($filename, $filePath)
+    {
+        try {
+            $this->filename = $filename;
+            $this->filePath = $filePath;
 
+            if ($errorMessage = $this->getUploadErrorMessage()) {
+                echo $errorMessage;
+            } elseif ($extensionError = $this->checkFileExtension()) {
+                echo $extensionError;
+            } elseif ($this->checkFileSize()) {
+                echo 'File size is too large!';
+            } elseif (!preg_match("`^[-0-9A-Z_\.]+$`i", $_FILES[$this->filename]['name'])) {
+                echo 'Special characters are not allowed in the file name!';
+            } else {
+                $tmpName = $_FILES[$this->filename]["tmp_name"];
+                $name = basename(strtolower($_FILES[$this->filename]['name']));
+                $uploadsDir = $_SERVER['DOCUMENT_ROOT'] . $this->uploadsDir . $this->filePath;
+                $fileExists = $uploadsDir . '/' . $_FILES[$this->filename]['name'];
 
-  public $filename;
-  public $uploads_dir='/sistem/myimg/';	
-  public $filepath;	
+                if (!is_file($uploadsDir)) {
+                    mkdir($uploadsDir);
+                }
 
-  public function __construct( $filename,$filepath ) {
-
-
-    try {
-
-       $this->filename = $filename;
-	   $this->filepath = $filepath;	
-
-     	
-		if (strlen($this->CodeToMessage($_FILES[$this->filename]['error']))>0 ) {
-			
-			echo $this->CodeToMessage($_FILES[$this->filename]['error']);
-		
-		}else if (strlen($this->PermissionExtensions($_FILES[$this->filename]['name']))>0) {
-		
-			echo $this->PermissionExtensions($_FILES[$this->filename]['name']);
-		
-		}else if (strlen($_FILES[$this->filename]['size']>1048576)) {
-		
-			echo 'Dosya boyutu çok büyük!';
-		
-		}else if (!preg_match("`^[-0-9A-Z_\.]+$`i",$_FILES[$this->filename]['name'])) {
-			
-			echo 'Dosya isminde özel karakterler kullanılamaz!!';
-			
-		} else {
-		
-			
-			 $tmp_name = $_FILES[$this->filename]["tmp_name"];
-			
-			 $name = basename(strtolower($_FILES[$this->filename]['name']));
-			
-			 $uploads_dir = $_SERVER['DOCUMENT_ROOT'].$this->uploads_dir.$this->filepath;
-			
-			 $file_exists = $uploads_dir.'/'.$_FILES[$this->filename]['name'];
-			
-			   if (!is_file( $uploads_dir )) {
-                 mkdir( $uploads_dir );
-                }		
-			
-			if (move_uploaded_file($tmp_name, "$uploads_dir/$name")) {
-				
-				echo "Dosyanız $this->filepath adlı klasöre başarı ile yüklendi";
-			}
-			
-			
-			
-		}
-		
-
-    } catch ( PDOException $e ) {
-
-      return [ 'status' => FALSE, 'error' => $e->getMessage() ]; 
+                if (move_uploaded_file($tmpName, "$uploadsDir/$name")) {
+                    echo "Your file was successfully uploaded to the $this->filePath directory.";
+                }
+            }
+        } catch (PDOException $e) {
+            return ['status' => FALSE, 'error' => $e->getMessage()];
+        }
     }
 
+    private function checkFileExtension()
+    {
+        try {
+            $extensions = strtolower(pathinfo(basename($_FILES[$this->filename]['name']), PATHINFO_EXTENSION));
+            $allowedExtensions = ['jpg', 'png', 'jpeg'];
 
-  }
-
-
-  private function PermissionExtensions( $permissionExtensions ) {
-
-
-    try {
-
-      $extensions = strtolower( pathinfo( basename( $permissionExtensions ), PATHINFO_EXTENSION ) );
-      $inArray = [ 'jpg', 'png', 'jpeg' ];
-
-      if ( in_array( $extensions, $inArray ) == FALSE ) {
-
-        throw new PDOException ('Geçersiz dosya uzantısı!');
-       
-      }
-
-     } catch ( PDOException $e ) {
-
-      return $e->getMessage();
-
+            if (!in_array($extensions, $allowedExtensions)) {
+                throw new PDOException('Invalid file extension!');
+            }
+        } catch (PDOException $e) {
+            return $e->getMessage();
+        }
     }
 
-
-  }
-
-
-  private function CodeToMessage( $code ) {
-
-
-    try {
-
-      switch ( $code ) {
-        case UPLOAD_ERR_INI_SIZE:
-          throw new PDOException( "Yüklenen dosya php.ini içindeki upload_max_filesize yönergesindeki değeri aşmaktadır." );
-          break;
-        case UPLOAD_ERR_FORM_SIZE:
-          throw new PDOException( "Yüklenen dosya HTML form içinde belirtilen MAX_FILE_SIZE değerini aşmaktadır." );
-          break;
-        case UPLOAD_ERR_PARTIAL:
-          throw new PDOException( "Dosya kısmen yüklenmiştir." );
-          break;
-        case UPLOAD_ERR_NO_FILE:
-          throw new PDOException( "Lütfen bir dosya seçin." );
-          break;
-        case UPLOAD_ERR_NO_TMP_DIR:
-          throw new PDOException( "Geçici dizin yoktur." );
-          break;
-        case UPLOAD_ERR_CANT_WRITE:
-          throw new PDOException( "Dosya diske yazılamamıştır." );
-          break;
-        case UPLOAD_ERR_EXTENSION:
-          throw new PDOException( "Dosya yükleme bir PHP eklentisi nedeniyle durmuştur." );
-          break;
-      }
-
-    } catch ( PDOException $e ) {
-
-      return $e->getMessage();
-
+    private function getUploadErrorMessage()
+    {
+        try {
+            switch ($_FILES[$this->filename]['error']) {
+                case UPLOAD_ERR_INI_SIZE:
+                    throw new PDOException("The uploaded file exceeds the upload_max_filesize directive in php.ini.");
+                    break;
+                case UPLOAD_ERR_FORM_SIZE:
+                    throw new PDOException("The uploaded file exceeds the MAX_FILE_SIZE directive that was specified in the HTML form.");
+                    break;
+                case UPLOAD_ERR_PARTIAL:
+                    throw new PDOException("The uploaded file was only partially uploaded.");
+                    break;
+                case UPLOAD_ERR_NO_FILE:
+                    throw new PDOException("Please select a file for upload.");
+                    break;
+                case UPLOAD_ERR_NO_TMP_DIR:
+                    throw new PDOException("Temporary folder is missing.");
+                    break;
+                case UPLOAD_ERR_CANT_WRITE:
+                    throw new PDOException("Failed to write file to disk.");
+                    break;
+                case UPLOAD_ERR_EXTENSION:
+                    throw new PDOException("File upload stopped by a PHP extension.");
+                    break;
+            }
+        } catch (PDOException $e) {
+            return $e->getMessage();
+        }
     }
-
-
-  }
-
-
 }
-
-
-?>
